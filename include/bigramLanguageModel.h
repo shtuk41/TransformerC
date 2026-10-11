@@ -5,6 +5,8 @@
 
 #include <head.h>
 
+#include <utils.h>
+
 using namespace torch::indexing;
 
 class BigramLanguageModel3 : public torch::nn::Module
@@ -28,12 +30,41 @@ public:
 	{
 		auto B = idx.sizes()[0];
 		auto T = idx.sizes()[1];
-
+		
 		auto tok_emb = token_embedding_table(idx); //(B,T,C)
-		auto pos_emb = position_embedding_table(torch::arange(T, torch::kCUDA));
-		auto x = pos_emb + pos_emb;//(B,T,C)
+
+#ifdef __BI_DEBUG		
+		std::cout << "tok_emb: \n";
+		printTensorShape(tok_emb);
+#endif		
+		
+		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::kCUDA)); //(T,C)
+
+#ifdef __BI_DEBUG			
+		std::cout << "pos_emb: \n";
+		printTensorShape(pos_emb);
+#endif		
+		
+		auto x = tok_emb + pos_emb.unsqueeze(0);//(B,T,C)
+	
+#ifdef __BI_DEBUG			
+		std::cout << "x after sum \n";
+		printTensorShape(x);
+#endif		
+		
 		x = sa_head->forward(x);
+
+#ifdef __BI_DEBUG		
+		std::cout << "bigram x: \n";
+		printTensorShape(x);
+#endif		
+		
 		auto logits = lm_head(x); //(B,T,vocab_size)
+		
+#ifdef	__BI_DEBUG		
+		std::cout << "bigram logits: \n";
+		printTensorShape(logits);
+#endif		
 
 		torch::Tensor loss = torch::Tensor();
 		if (targets.defined())
@@ -47,8 +78,17 @@ public:
 
 			loss = torch::nn::functional::cross_entropy(logits_flat, targets_flat);
 		}
+#ifdef __BI_DEBUG	
+		
+		std::cout << "exit bigram forward: \n";
+		
+		printTensorShape(loss);
+#endif		
+
 
 		return { logits, loss };
+		
+		
 	}
 
 	torch::Tensor generate(torch::Tensor idx, int max_new_tokens)

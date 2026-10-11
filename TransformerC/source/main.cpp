@@ -13,7 +13,7 @@
 
 struct configuration
 {
-	int head_size = 16;
+	int head_size = 32;
 	int batch_size = 32;
 	int block_size = 8;
 	int n_embd = 32;
@@ -140,7 +140,9 @@ void dev6(configuration& params)
 						for (int k = 0; k < iterations; k++)
 						{
 							auto [xb, yb] = get_batch(split);
+							//std::cout << "Check point 7\n";
 							auto [logits, loss] = m.forward(xb, yb);
+							//std::cout << "Check point 8\n";
 							total_loss += loss.item<float>();
 						}
 						out[split] = total_loss / iterations;
@@ -152,7 +154,7 @@ void dev6(configuration& params)
 				return out;
 			};
 
-
+		std::cout << "Check point 6\n";
 		for (int step = 0; step < params.train_steps; step++)
 		{
 			if (step % params.train_loss_print_every_num_iter == 0)
@@ -169,8 +171,10 @@ void dev6(configuration& params)
 			loss.backward();
 			optimizer.step();
 		}
+		
+		std::cout << "Check point 7\n";
 
-		auto idx = torch::zeros({ 1,1 }, torch::kLong).to(device);
+		auto idx = torch::zeros({ 1,8 }, torch::kLong).to(device);
 
 		idx = m.generate(idx, params.max_new_tokens);
 

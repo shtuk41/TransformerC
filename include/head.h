@@ -1,6 +1,7 @@
 #pragma once
 
 #include <torch/torch.h>
+#include <utils.h>
 
 class Head : public torch::nn::Module
 {
@@ -32,15 +33,60 @@ public:
 		auto B = x.sizes()[0];
 		auto T = x.sizes()[1];
 		auto C = x.sizes()[2];
+		
+#ifdef _HEAD_DEBUG		
+		std::cout << "head x: \n";
+		printTensorShape(x);
+#endif		
 
 		auto k = key(x);
+
+#ifdef _HEAD_DEBUG			
+		std::cout << "head k: \n";
+		printTensorShape(k);
+#endif			
+		
 		auto q = query(x);
 
+#ifdef _HEAD_DEBUG			
+		std::cout << "head q: \n";
+		printTensorShape(q);
+#endif			
+
 		auto wei = q.matmul(k.transpose(-2, -1)) * sqrt(head_size);
+
+#ifdef _HEAD_DEBUG			
+		std::cout << "head wei: \n";
+		printTensorShape(wei);
+#endif			
+		
 		wei = wei.masked_fill(tril == 0, -std::numeric_limits<float>::infinity());
+
+#ifdef _HEAD_DEBUG			
+		std::cout << "head wei2: \n";
+		printTensorShape(wei);
+#endif			
+		
 		wei = torch::nn::functional::softmax(wei, -1);
+
+#ifdef _HEAD_DEBUG			
+		std::cout << "head wei3: \n";
+		printTensorShape(wei);
+#endif			
+		
 		auto v = value(x);
+		
+#ifdef _HEAD_DEBUG			
+		std::cout << "head v: \n";
+		printTensorShape(v);
+#endif			
+		
 		auto out = wei.matmul(v);
+
+#ifdef _HEAD_DEBUG			
+		std::cout << "head out: \n";
+		printTensorShape(out);
+#endif			
 
 		return out;
 	}
