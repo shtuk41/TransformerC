@@ -3,7 +3,9 @@
 
 #include <torch/torch.h>
 
+#include <feedForward.h>
 #include <head.h>
+
 
 #include <utils.h>
 
@@ -17,13 +19,15 @@ private:
 	std::shared_ptr<MultiHeadAttention> sa_head; //multi attention
 	torch::nn::Linear lm_head;
 	int64_t block_size;
+	std::shared_ptr<FeedForward> ffwd; 
 public:
 	BigramLanguageModel4(int64_t vocab_size, int64_t number_heads, int64_t head_size, int64_t block_size, int64_t n_embd) :
 		token_embedding_table(register_module("token_embedding_table", torch::nn::Embedding(vocab_size, n_embd))),
 		position_embedding_table(register_module("position_embedding_table", torch::nn::Embedding(block_size, n_embd))),
 		sa_head(register_module("sa_head", std::make_shared<MultiHeadAttention>(number_heads, head_size, block_size, n_embd))),
 		lm_head(register_module("lm_head", torch::nn::Linear(n_embd, vocab_size))),
-		block_size(block_size)
+		block_size(block_size),
+		ffwd(register_module("ffwd", std::make_shared<FeedForward>(n_embd)))
 	{}
 
 	std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor idx, torch::Tensor targets = torch::Tensor())
@@ -58,6 +62,14 @@ public:
 		std::cout << "bigram x: \n";
 		printTensorShape(x);
 #endif		
+
+		x = ffwd->forward(x);
+		
+#ifdef __BI_DEBUG			
+		std::cout << "x after ffwd \n";
+		printTensorShape(x);
+#endif			
+
 		
 		auto logits = lm_head(x); //(B,T,vocab_size)
 		
