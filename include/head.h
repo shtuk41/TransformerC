@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <torch/torch.h>
 #include <utils.h>
 
@@ -88,6 +90,41 @@ public:
 		printTensorShape(out);
 #endif			
 
+		return out;
+	}
+};
+
+class MultiHeadAttention : public torch::nn::Module
+{
+private:
+	torch::nn::ModuleList heads;
+public:
+	MultiHeadAttention(int64_t num_heads, int64_t head_size, int64_t block_size, int64_t n_embd)
+	{
+		for (int64_t ii = 0; ii < num_heads; ii++)
+		{
+			auto head = register_module("head_" + std::to_string(ii), std::make_shared<Head>(head_size, block_size, n_embd));
+			heads->push_back(head);
+		}
+		
+		register_module("heads", heads);
+	}
+	
+	torch::Tensor forward(torch::Tensor x, torch::Tensor targets = torch::Tensor())
+	{
+		std::vector<torch::Tensor> outputs;
+		
+		outputs.reserve(heads->size());
+		
+		for (int ii = 0; ii < heads->size(); ii++)
+		{
+			auto head = heads[ii];
+			
+			auto head_out = heads[ii]->as<Head>()->forward(x);
+			outputs.push_back(head_out);
+		}
+		
+		auto out = torch::cat(outputs, 2);
 		return out;
 	}
 };
