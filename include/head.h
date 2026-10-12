@@ -128,3 +128,11 @@ public:
 		return out;
 	}
 };
+
+class Block : public torch::nn::Module
+{
+private:
+	
+public:
+
+};
