@@ -3,7 +3,9 @@
 #include <vector>
 
 #include <torch/torch.h>
+#include <feedForward.h>
 #include <utils.h>
+
 
 class Head : public torch::nn::Module
 {
@@ -133,6 +135,23 @@ class Block : public torch::nn::Module
 {
 private:
 	
+	int64_t head_size;
+	std::shared_ptr<MultiHeadAttention> sa; //multi attention
+	std::shared_ptr<FeedForward> ffwd; 
+	
 public:
-
+	Block(int64_t n_heads, int64_t block_size, int64_t n_embd) :
+			head_size(n_embd / n_heads),
+			sa(register_module("sa_head", std::make_shared<MultiHeadAttention>(n_heads, n_embd / n_heads, block_size, n_embd))),
+			ffwd(register_module("ffwd", std::make_shared<FeedForward>(n_embd)))
+	{
+	}
+	
+	torch::Tensor forward(torch::Tensor x, torch::Tensor targets = torch::Tensor())
+	{
+		x = sa->forward(x);
+		x = ffwd->forward(x);
+		
+		return x;
+	}
 };

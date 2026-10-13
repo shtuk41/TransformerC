@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <memory>
 #include <torch/torch.h>
 
 #include <feedForward.h>
@@ -10,6 +11,59 @@
 #include <utils.h>
 
 using namespace torch::indexing;
+
+
+class BigramLanguageModel5 : public torch::nn::Module
+{
+private:
+	torch::nn::Embedding token_embedding_table;
+	torch::nn::Embedding position_embedding_table;
+	torch::nn::Linear lm_head;
+	int64_t block_size;
+	
+	torch::nn::Sequential blocks;
+	
+public:
+	BigramLanguageModel5(int64_t vocab_size, int64_t number_heads, int64_t head_size, int64_t block_size, int64_t n_embd) :
+		token_embedding_table(register_module("token_embedding_table", torch::nn::Embedding(vocab_size, n_embd))),
+		position_embedding_table(register_module("position_embedding_table", torch::nn::Embedding(block_size, n_embd))),
+		lm_head(register_module("lm_head", torch::nn::Linear(n_embd, vocab_size))),
+		block_size(block_size),
+		blocks(register_module("blocks", torch::nn::Sequential(
+				std::make_shared<Block>(number_heads, block_size, n_embd),
+				std::make_shared<Block>(number_heads, block_size, n_embd),
+				std::make_shared<Block>(number_heads, block_size, n_embd))))
+	{}
+
+	std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor idx, torch::Tensor targets = torch::Tensor())
+	{
+		torch::Tensor logits,loss;
+
+
+		return { logits, loss };
+		
+		
+	}
+
+	torch::Tensor generate(torch::Tensor idx, int max_new_tokens)
+	{
+		for (int ii = 0; ii < max_new_tokens; ii++)
+		{
+			int64_t seq_len = idx.size(1);
+			int64_t start = std::max(static_cast<int64_t>(0), seq_len - block_size);
+
+			auto idx_cond = idx.slice(1, start, seq_len);
+			auto [logits, loss] = forward(idx_cond);
+			auto last_logits = logits.index({ Slice(), -1});
+			auto probs = torch::nn::functional::softmax(last_logits, -1);
+			auto idx_next = torch::multinomial(probs, 1);
+
+			idx = torch::cat({ idx, idx_next }, 1);
+		}
+
+		return idx;
+	}
+};
 
 class BigramLanguageModel4 : public torch::nn::Module
 {
