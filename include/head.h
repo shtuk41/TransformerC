@@ -100,8 +100,10 @@ class MultiHeadAttention : public torch::nn::Module
 {
 private:
 	torch::nn::ModuleList heads;
+	torch::nn::Linear proj;
 public:
-	MultiHeadAttention(int64_t num_heads, int64_t head_size, int64_t block_size, int64_t n_embd)
+	MultiHeadAttention(int64_t num_heads, int64_t head_size, int64_t block_size, int64_t n_embd) :
+		proj(register_module("proj", torch::nn::Linear(torch::nn::LinearOptions(n_embd, n_embd))))
 	{
 		for (int64_t ii = 0; ii < num_heads; ii++)
 		{
@@ -127,6 +129,8 @@ public:
 		}
 		
 		auto out = torch::cat(outputs, 2);
+		out = proj->forward(out);
+		
 		return out;
 	}
 };
@@ -149,8 +153,8 @@ public:
 	
 	torch::Tensor forward(torch::Tensor x, torch::Tensor targets = torch::Tensor())
 	{
-		x = sa->forward(x);
-		x = ffwd->forward(x);
+		x = x + sa->forward(x);
+		x = x + ffwd->forward(x);
 		
 		return x;
 	}

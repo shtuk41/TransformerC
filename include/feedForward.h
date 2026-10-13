@@ -11,8 +11,9 @@ private:
 public:
 	FeedForward(int64_t n_embd) :
 		net(register_module("net", torch::nn::Sequential(
-			torch::nn::Linear(torch::nn::LinearOptions(n_embd, n_embd)),
-			torch::nn::ReLU())))
+			torch::nn::Linear(torch::nn::LinearOptions(n_embd, 4 * n_embd)),
+			torch::nn::ReLU(),
+			torch::nn::Linear(torch::nn::LinearOptions(4 * n_embd, n_embd)))))
 	{
 	}
 	
