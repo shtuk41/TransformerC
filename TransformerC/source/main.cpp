@@ -13,11 +13,11 @@
 
 struct configuration
 {
-	int number_heads = 4;
+	int number_heads = 6;
 	int head_size = 8;
 	int batch_size = 32;
-	int block_size = 8;
-	int n_embd = 32;
+	int block_size = 64;
+	int n_embd = 48;
 	int max_new_tokens = 500;	
 	double train_percent = 0.9; 
 	int train_steps = 15000;
