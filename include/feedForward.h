@@ -9,11 +9,12 @@ private:
 	torch::nn::Sequential net;
 
 public:
-	FeedForward(int64_t n_embd) :
+	FeedForward(int64_t n_embd, double dropout) :
 		net(register_module("net", torch::nn::Sequential(
 			torch::nn::Linear(torch::nn::LinearOptions(n_embd, 4 * n_embd)),
 			torch::nn::ReLU(),
-			torch::nn::Linear(torch::nn::LinearOptions(4 * n_embd, n_embd)))))
+			torch::nn::Linear(torch::nn::LinearOptions(4 * n_embd, n_embd)),
+			torch::nn::Dropout(torch::nn::DropoutOptions(dropout)))))
 	{
 	}
 	

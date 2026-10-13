@@ -24,6 +24,7 @@ struct configuration
 	float learning_rate = 1e-3;
 	int train_loss_print_every_num_iter  = 1000;
 	int estimate_loss_iterations = 200;
+	double dropout = 0.3;
 	
 } configuration_params;
 
@@ -121,7 +122,7 @@ void dev8(configuration& params)
 
 		std::cout << "Check point 2\n";
 
-		BigramLanguageModel4 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd);
+		BigramLanguageModel5 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
 
 		std::cout << "Check point 3\n";
 		m.to(device);
@@ -273,7 +274,7 @@ void dev7(configuration& params)
 
 		std::cout << "Check point 2\n";
 
-		BigramLanguageModel4 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd);
+		BigramLanguageModel4 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
 
 		std::cout << "Check point 3\n";
 		m.to(device);
@@ -425,7 +426,7 @@ void dev6(configuration& params)
 
 		std::cout << "Check point 2\n";
 
-		BigramLanguageModel3 m(65, params.head_size, params.block_size, params.n_embd);
+		BigramLanguageModel3 m(65, params.head_size, params.block_size, params.n_embd, params.dropout);
 
 		std::cout << "Check point 3\n";
 		m.to(device);
