@@ -37,11 +37,65 @@ public:
 
 	std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor idx, torch::Tensor targets = torch::Tensor())
 	{
-		torch::Tensor logits,loss;
+		auto B = idx.sizes()[0];
+		auto T = idx.sizes()[1];
+		
+		auto tok_emb = token_embedding_table(idx); //(B,T,C)
+
+#ifdef __BI_DEBUG		
+		std::cout << "tok_emb: \n";
+		printTensorShape(tok_emb);
+#endif		
+		
+		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::kCUDA)); //(T,C)
+
+#ifdef __BI_DEBUG			
+		std::cout << "pos_emb: \n";
+		printTensorShape(pos_emb);
+#endif		
+		
+		auto x = tok_emb + pos_emb.unsqueeze(0);//(B,T,C)
+	
+#ifdef __BI_DEBUG			
+		std::cout << "x after sum \n";
+		printTensorShape(x);
+#endif		
+		
+		x = blocks->forward(x);
+
+#ifdef __BI_DEBUG		
+		std::cout << "bigram x: \n";
+		printTensorShape(x);
+#endif		
+
+		auto logits = lm_head(x); //(B,T,vocab_size)
+		
+#ifdef	__BI_DEBUG		
+		std::cout << "bigram logits: \n";
+		printTensorShape(logits);
+#endif		
+
+		torch::Tensor loss = torch::Tensor();
+		if (targets.defined())
+		{
+			int64_t B = logits.size(0);
+			int64_t T = logits.size(1);
+			int64_t C = logits.size(2);
+
+			auto logits_flat = logits.view({ B * T, C });
+			auto targets_flat = targets.view({ B * T });
+
+			loss = torch::nn::functional::cross_entropy(logits_flat, targets_flat);
+		}
+#ifdef __BI_DEBUG	
+		
+		std::cout << "exit bigram forward: \n";
+		
+		printTensorShape(loss);
+#endif		
 
 
 		return { logits, loss };
-		
 		
 	}
 
