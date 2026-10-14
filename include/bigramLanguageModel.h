@@ -35,6 +35,9 @@ public:
 				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
 				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
 				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
+				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
+				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
+				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
 				torch::nn::LayerNorm(torch::nn::LayerNormOptions({n_embd})))))
 	{}
 

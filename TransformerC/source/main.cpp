@@ -18,10 +18,10 @@ struct configuration
 	int batch_size = 32;
 	int block_size = 64;
 	int n_embd = 48;
-	int max_new_tokens = 500;	
+	int max_new_tokens = 1000;	
 	double train_percent = 0.9; 
-	int train_steps = 15000;
-	float learning_rate = 1e-3;
+	int train_steps = 150000;
+	float learning_rate = 3e-4;
 	int train_loss_print_every_num_iter  = 1000;
 	int estimate_loss_iterations = 200;
 	double dropout = 0.3;
@@ -37,6 +37,8 @@ void dev6(configuration& params);
 void dev7(configuration& params);
 void dev8(configuration& params);
 
+void gen_text(configuration& params);
+
 int main()
 {
 	torch::xpu::manual_seed(1337);
@@ -50,15 +52,66 @@ int main()
 	//dev7(configuration_params);
 	dev8(configuration_params);
 	
+	//gen_text(configuration_params);
+	
 	std::cout << "The end\n";
 	return 0;
 }
 
+void gen_text(configuration& params)
+{
+	torch::Device device(torch::kCUDA);
+	
+	try
+	{
+		BigramLanguageModel5 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
+		
+		auto m_ptr = std::shared_ptr<BigramLanguageModel5>(&m, [](BigramLanguageModel5*) {});
+		torch::load(m_ptr, "shakespeare_model.pt");
+		
+		int64_t total_params = 0;
+		for (const auto& pair : m.named_parameters()) 
+		{
+			total_params += pair.value().numel();
+		}
 
+		std::cout << "Total trainable parameters: " << total_params << std::endl;
+			
+		auto idx = torch::zeros({ 1, params.block_size }, torch::kLong).to(device);
+
+		idx = m.generate(idx, params.max_new_tokens);
+
+		auto cpu_tensor = idx.to(torch::kCPU).contiguous();
+		int64_t* ptr = cpu_tensor.data_ptr<int64_t>();
+		std::vector<int64_t> vec(ptr, ptr + cpu_tensor.numel());
+		
+		std::vector<char> inputBuffer = readInputData();
+		std::cout << std::format("Number of characters: {}\n", inputBuffer.size());
+		std::set<char> inputSet;
+
+		for (const auto it : inputBuffer)
+			inputSet.insert(it);
+
+		decode<int64_t> decodeO(inputSet);
+
+		auto output = decodeO(vec);
+
+		for (char c : output)
+		{
+			std::cout << c;
+		}
+
+		std::cout << std::endl;
+	}
+	catch (std::exception& ex)
+	{
+		std::cout << std::format("Exception: {}", ex.what());
+	}
+}
 
 void dev8(configuration& params)
 {
-	std::cout << "dev6\n\n";
+	std::cout << "dev8\n\n";
 
 	torch::Device device(torch::kCUDA);
 
@@ -181,6 +234,18 @@ void dev8(configuration& params)
 		}
 		
 		std::cout << "Check point 7\n";
+		
+		int64_t total_params = 0;
+		for (const auto& pair : m.named_parameters()) 
+		{
+			total_params += pair.value().numel();
+		}
+
+		std::cout << "Total trainable parameters: " << total_params << std::endl;
+		
+		auto m_ptr = std::shared_ptr<BigramLanguageModel5>(&m, [](BigramLanguageModel5*) {});
+		
+		torch::save(m_ptr, "shakespeare_model.pt");
 
 		auto idx = torch::zeros({ 1, params.block_size }, torch::kLong).to(device);
 
@@ -210,7 +275,7 @@ void dev8(configuration& params)
 
 void dev7(configuration& params)
 {
-	std::cout << "dev6\n\n";
+	std::cout << "dev7\n\n";
 
 	torch::Device device(torch::kCUDA);
 
