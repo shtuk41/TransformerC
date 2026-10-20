@@ -14,7 +14,7 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
 #endif
 
-    std::string text = "Hello World! ✓ ★";
+    std::string text = "Привет, мир! ✓ ★";
 
     size_t count = utf8::distance(text.begin(), text.end());
 
