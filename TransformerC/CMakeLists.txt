@@ -19,6 +19,7 @@ set (MY_SOURCES
 set(MY_HEADERS
     "${CMAKE_SOURCE_DIR}/include/utils.h"
     "${CMAKE_SOURCE_DIR}/include/bigramLanguageModel.h"
+	"${CMAKE_SOURCE_DIR}/include/tokenizer.h"
 )
 
 source_group("Header Files" FILES ${MY_HEADERS})
