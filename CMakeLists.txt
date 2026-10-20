@@ -49,7 +49,6 @@ endif()
 
 find_package(Torch CONFIG REQUIRED)
 find_package(CUDAToolkit 13.3 REQUIRED)
-find_package(utf8cpp CONFIG REQUIRED)
 
 add_subdirectory(TransformerC)
 add_subdirectory(Tokenizer)
