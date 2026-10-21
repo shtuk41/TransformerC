@@ -7,6 +7,7 @@ set (MY_SOURCES
 
 set(MY_HEADERS
 	"${CMAKE_SOURCE_DIR}/include/tokenizer.h"
+	"${CMAKE_SOURCE_DIR}/include/utils.h"
 )
 
 source_group("Header Files" FILES ${MY_HEADERS})
@@ -47,8 +48,11 @@ target_compile_features(Tokenizer PRIVATE cxx_std_20)
 if(WIN32)
 	target_compile_features(Tokenizer PRIVATE cxx_std_20)
 	target_compile_options(Tokenizer PRIVATE "/utf-8")
+	add_custom_command(TARGET Tokenizer POST_BUILD
 
-    set_target_properties(Tokenizer PROPERTIES
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/TransformerC/source/input.txt" "${CMAKE_BINARY_DIR}/x64/$<CONFIG>"
+	)    
+	set_target_properties(Tokenizer PROPERTIES
     		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/x64/$<CONFIG>"
     		#RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/build/bin"
     		#RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/build/bin"
@@ -61,7 +65,8 @@ elseif(LINUX)
 	set(CMAKE_CXX_STANDARD 20)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 	set(CMAKE_CXX_EXTENSIONS OFF)
-	
+
+
 	set_target_properties(Tokenizer PROPERTIES
 	    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 	    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
