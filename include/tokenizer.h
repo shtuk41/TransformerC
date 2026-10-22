@@ -1,15 +1,27 @@
 #pragma once
 
 #include <map>
+#include <string>
+#include <vector>
 
-//#define TOKENINZER_DEBUG
+#include <utf8.h>
+
+//#define TOKENIZER_DEBUG
 
 class BPE_Tokenizer
 {
 private:
-	std::map<std::pair<uint32_t, uint32_t>, uint32_t> dictionary;
+	std::map<uint32_t, std::string> vocabluary;
 	uint32_t maxTokenNumber = 0;
 	std::vector<uint32_t> code_points;
+
+	std::string uint32ToString(uint32_t c)
+	{
+		std::string utf8charrep;
+		utf8::append(c, std::back_inserter(utf8charrep));
+		return utf8charrep;
+		//return std::string(1, static_cast<char>(c));
+	}
 
 public:
 	BPE_Tokenizer(std::vector<uint32_t> &code_points) : 
@@ -19,10 +31,19 @@ public:
 		for (int ii = 0; ii < code_points.size(); ii++)
 		{
 			if (code_points[ii] > maxTokenNumber)
+			{
 				maxTokenNumber = code_points[ii];
+			}
+
+			if (!vocabluary.contains(code_points[ii]))
+			{
+				auto rep = uint32ToString(code_points[ii]);
+				vocabluary[code_points[ii]] = rep;
+			}
 		}
 	}
 
+	auto GetVocabluary() const { return vocabluary; }
 	uint32_t GetMaxTokenNumber() const { return maxTokenNumber;  }
 
 	size_t GetVectorSize() const { return code_points.size(); }
@@ -31,7 +52,7 @@ public:
 	{
 		std::map<std::pair<uint32_t, uint32_t>, size_t> pairs;
 
-		for (int ii = 0; ii < code_points.size() - 1; ii += 2)
+		for (int ii = 0; ii < code_points.size() - 1; ii += 1)
 		{
 			std::pair<uint32_t, uint32_t> next = { code_points[ii], code_points[ii + 1] };
 			pairs[next] += 1;
@@ -49,21 +70,23 @@ public:
 			}
 		}
 
-#ifdef TOKENINZER_DEBUG
+#ifdef TOKENIZER_DEBUG
 		std::cout << std::format("pair ({},{}), times {}\n", max_pair.first, max_pair.second, max);
 		std::cout << std::format("total pairs: {}\n", pairs.size());
 		std::cout << std::format("code point vector size: {}\n", code_points.size());
 #endif
 		
 		maxTokenNumber += 1;
-		dictionary[max_pair] = maxTokenNumber;
+		//dictionary[max_pair] = maxTokenNumber;
+
+		vocabluary[maxTokenNumber] = vocabluary[max_pair.first] + vocabluary[max_pair.second];
 
 		for (size_t ii = 0; ii + 1 < code_points.size(); )
 		{
 			if (code_points[ii] == max_pair.first && code_points[ii + 1] == max_pair.second)
 			{
 				code_points[ii] = maxTokenNumber; // Replace first element
-				code_points[ii + 1] = -1; // Mark second element for removal
+				code_points[ii + 1] = UINT32_MAX; // Mark second element for removal
 
 				ii += 2; // Jump by 2 to completely skip this pair
 			}
@@ -74,7 +97,7 @@ public:
 		}
 
 		code_points.erase(
-			std::remove(code_points.begin(), code_points.end(), -1),
+			std::remove(code_points.begin(), code_points.end(), UINT32_MAX),
 			code_points.end()
 		);
 	}
