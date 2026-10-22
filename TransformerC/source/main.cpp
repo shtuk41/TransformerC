@@ -9,6 +9,7 @@
 
 #include <bigramLanguageModel.h>
 #include <head.h>
+#include <tokenizer.h>
 #include <utils.h>
 
 struct configuration
@@ -20,7 +21,7 @@ struct configuration
 	int n_embd = 48;
 	int max_new_tokens = 1000;	
 	double train_percent = 0.9; 
-	int train_steps = 150000;
+	int train_steps = 20000;
 	float learning_rate = 3e-4;
 	int train_loss_print_every_num_iter  = 1000;
 	int estimate_loss_iterations = 200;
@@ -36,6 +37,7 @@ void dev5(configuration& params);
 void dev6(configuration& params);
 void dev7(configuration& params);
 void dev8(configuration& params);
+void dev9(configuration& params);
 
 void gen_text(configuration& params);
 
@@ -50,7 +52,8 @@ int main()
 	//dev5(configuration_params);
 	//dev6(configuration_params);
 	//dev7(configuration_params);
-	dev8(configuration_params);
+	//dev8(configuration_params);
+	dev9(configuration_params);
 	
 	//gen_text(configuration_params);
 	
@@ -58,16 +61,153 @@ int main()
 	return 0;
 }
 
-void gen_text(configuration& params)
+void dev9(configuration& params)
 {
+	std::cout << "dev9\n\n";
+
 	torch::Device device(torch::kCUDA);
-	
+
 	try
 	{
-		BigramLanguageModel5 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
+		std::vector<uint32_t> code_points = readInputData32();
+		std::cout << "Total utf points: " << code_points.size() << std::endl;
+
+		BPE_Tokenizer tokenizer(code_points);
 		
-		auto m_ptr = std::shared_ptr<BigramLanguageModel5>(&m, [](BigramLanguageModel5*) {});
-		torch::load(m_ptr, "shakespeare_model.pt");
+		uint32_t max_token_num = 0;
+
+		do
+		{
+			tokenizer.TrainStep();
+
+			max_token_num = tokenizer.GetMaxTokenNumber();
+			
+			if (max_token_num %50 == 0)
+				std::cout << std::format("maximum token number: {}\n", max_token_num);
+		} while (max_token_num < 150);
+
+		std::cout << std::format("maximum token number: {}\n", tokenizer.GetMaxTokenNumber());
+		std::cout << std::format("vector size: {}\n", tokenizer.GetVectorSize());
+
+		
+		auto codePoints = tokenizer.GetCodePoints();
+		
+		
+		std::cout << "Check point 0a\n";
+		std::vector<int64_t> long_codePoints(codePoints.begin(), codePoints.end());
+		
+		std::cout << "Size of long_codePOints is : " << long_codePoints.size() << "\n";
+		
+		torch::Tensor data = torch::tensor(long_codePoints, torch::kLong);
+		
+		std::cout << "Check point 0b\n";
+
+		size_t trainSize = data.size(0) * params.train_percent;
+		size_t valSize = data.size(0) - trainSize;
+
+		std::cout << std::format("Train data size: {}\n", trainSize);
+		std::cout << std::format("Validation data size: {}\n", valSize);
+		torch::Tensor train_data = data.slice(0, 0, trainSize);
+		torch::Tensor val_data = data.slice(0, trainSize, trainSize + valSize);
+
+		std::cout << "Check point 1\n";
+
+		auto get_batch = [&](std::string_view split) -> std::pair<torch::Tensor, torch::Tensor>
+			{
+				torch::Tensor current_data;
+
+				if (split == "train")
+				{
+					current_data = train_data;
+				}
+				else
+				{
+					current_data = val_data;
+				}
+
+				// Generate random starting indices for the batch
+				auto ix = torch::randint(0, current_data.size(0) - params.block_size, { params.batch_size }, torch::kLong);
+				auto ix_accessor = ix.accessor<int64_t, 1>();
+
+				std::vector<torch::Tensor> x_list;
+				std::vector<torch::Tensor> y_list;
+				x_list.reserve(params.batch_size);
+				y_list.reserve(params.batch_size);
+
+				for (int64_t i = 0; i < params.batch_size; ++i)
+				{
+					int64_t idx = ix_accessor[i];
+					x_list.push_back(current_data.slice(0, idx, idx + params.block_size));
+					y_list.push_back(current_data.slice(0, idx + 1, idx + params.block_size + 1));
+				}
+
+				auto x = torch::stack(x_list).to(device);
+				auto y = torch::stack(y_list).to(device);
+
+				return { x, y };
+			};
+
+		std::cout << "Check point 2\n";
+
+		BigramLanguageModel5 m(tokenizer.GetMaxTokenNumber() + 1, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
+
+		std::cout << "Check point 3\n";
+		m.to(device);
+
+		std::cout << "Check point 4\n";
+
+		auto optimizer = torch::optim::Adam(m.parameters(), params.learning_rate);
+
+		std::cout << "Check point 5\n";
+
+		auto estimate_loss = [&](int iterations) -> std::unordered_map<std::string, float>
+			{
+				std::unordered_map<std::string, float> out;
+				m.eval();  //switch to evaluation model;
+
+				{
+					torch::NoGradGuard no_grad;
+
+					for (const auto& split : std::array{ "train", "val" })
+					{
+						float total_loss = 0.0f;
+
+						for (int k = 0; k < iterations; k++)
+						{
+							auto [xb, yb] = get_batch(split);
+							//std::cout << "Check point 7\n";
+							auto [logits, loss] = m.forward(xb, yb);
+							//std::cout << "Check point 8\n";
+							total_loss += loss.item<float>();
+						}
+						out[split] = total_loss / iterations;
+					}
+				}
+
+				m.train();  //switch back to train mode
+
+				return out;
+			};
+
+		std::cout << "Check point 6\n";
+		for (int step = 0; step < params.train_steps; step++)
+		{
+			if (step % params.train_loss_print_every_num_iter == 0)
+			{
+				auto losses = estimate_loss(params.estimate_loss_iterations);
+				std::cout << "step:  " << step << ", " << "losses train: " << losses["train"] << " val: " << losses["val"] << std::endl;
+			}
+
+			auto [xb, yb] = get_batch("train");
+			auto [logits, loss] = m.forward(xb, yb);
+
+			optimizer.zero_grad(true);
+
+			loss.backward();
+			optimizer.step();
+		}
+		
+		std::cout << "Check point 7\n";
 		
 		int64_t total_params = 0;
 		for (const auto& pair : m.named_parameters()) 
@@ -76,7 +216,11 @@ void gen_text(configuration& params)
 		}
 
 		std::cout << "Total trainable parameters: " << total_params << std::endl;
-			
+		
+		auto m_ptr = std::shared_ptr<BigramLanguageModel5>(&m, [](BigramLanguageModel5*) {});
+		
+		torch::save(m_ptr, "shakespeare_model.pt");
+
 		auto idx = torch::zeros({ 1, params.block_size }, torch::kLong).to(device);
 
 		idx = m.generate(idx, params.max_new_tokens);
@@ -84,22 +228,12 @@ void gen_text(configuration& params)
 		auto cpu_tensor = idx.to(torch::kCPU).contiguous();
 		int64_t* ptr = cpu_tensor.data_ptr<int64_t>();
 		std::vector<int64_t> vec(ptr, ptr + cpu_tensor.numel());
-		
-		std::vector<char> inputBuffer = readInputData();
-		std::cout << std::format("Number of characters: {}\n", inputBuffer.size());
-		std::set<char> inputSet;
 
-		for (const auto it : inputBuffer)
-			inputSet.insert(it);
+		std::vector<uint32_t> codePoints32(vec.begin(), vec.end());
 
-		decode<int64_t> decodeO(inputSet);
+		auto output = tokenizer.Decode(codePoints32);
 
-		auto output = decodeO(vec);
-
-		for (char c : output)
-		{
-			std::cout << c;
-		}
+		std::cout << output;
 
 		std::cout << std::endl;
 	}
@@ -929,3 +1063,53 @@ void dev1()
 	}
 }
 
+void gen_text(configuration& params)
+{
+	torch::Device device(torch::kCUDA);
+	
+	try
+	{
+		BigramLanguageModel5 m(65, params.number_heads, params.head_size, params.block_size, params.n_embd, params.dropout);
+		
+		auto m_ptr = std::shared_ptr<BigramLanguageModel5>(&m, [](BigramLanguageModel5*) {});
+		torch::load(m_ptr, "shakespeare_model.pt");
+		
+		int64_t total_params = 0;
+		for (const auto& pair : m.named_parameters()) 
+		{
+			total_params += pair.value().numel();
+		}
+
+		std::cout << "Total trainable parameters: " << total_params << std::endl;
+			
+		auto idx = torch::zeros({ 1, params.block_size }, torch::kLong).to(device);
+
+		idx = m.generate(idx, params.max_new_tokens);
+
+		auto cpu_tensor = idx.to(torch::kCPU).contiguous();
+		int64_t* ptr = cpu_tensor.data_ptr<int64_t>();
+		std::vector<int64_t> vec(ptr, ptr + cpu_tensor.numel());
+		
+		std::vector<char> inputBuffer = readInputData();
+		std::cout << std::format("Number of characters: {}\n", inputBuffer.size());
+		std::set<char> inputSet;
+
+		for (const auto it : inputBuffer)
+			inputSet.insert(it);
+
+		decode<int64_t> decodeO(inputSet);
+
+		auto output = decodeO(vec);
+
+		for (char c : output)
+		{
+			std::cout << c;
+		}
+
+		std::cout << std::endl;
+	}
+	catch (std::exception& ex)
+	{
+		std::cout << std::format("Exception: {}", ex.what());
+	}
+}

@@ -1,4 +1,5 @@
 
+#include <stdint.h>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -6,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -48,7 +50,9 @@ int main()
 			tokenizer.TrainStep();
 
 			max_token_num = tokenizer.GetMaxTokenNumber();
-			//std::cout << std::format("maximum token number: {}\n", max_token_num);
+			
+			if (max_token_num %50 == 0)
+				std::cout << std::format("maximum token number: {}\n", max_token_num);
 		} while (max_token_num < 600);
 
 		std::cout << std::format("maximum token number: {}\n", tokenizer.GetMaxTokenNumber());

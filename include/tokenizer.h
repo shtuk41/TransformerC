@@ -1,6 +1,8 @@
 #pragma once
 
-#include <map>
+#include <algorithm> 
+#include <cstdint> 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -8,6 +10,7 @@
 
 //#define TOKENIZER_DEBUG
 
+//BYTE PAIR ENCODING
 class BPE_Tokenizer
 {
 private:
@@ -47,6 +50,25 @@ public:
 	uint32_t GetMaxTokenNumber() const { return maxTokenNumber;  }
 
 	size_t GetVectorSize() const { return code_points.size(); }
+	
+	auto GetCodePoints() const 
+	{
+		return code_points;
+	}
+	
+	std::string Decode(std::vector<uint32_t> &codes)
+	{
+		std::string utf8charrep;
+		
+		utf8charrep.reserve(codes.size() * 8); 
+		
+		for (auto &c : codes)
+		{
+			utf8charrep += vocabluary[c];
+		}	
+		
+		return utf8charrep;
+	}
 
 	void TrainStep()
 	{
@@ -85,8 +107,8 @@ public:
 		{
 			if (code_points[ii] == max_pair.first && code_points[ii + 1] == max_pair.second)
 			{
-				code_points[ii] = maxTokenNumber; // Replace first element
-				code_points[ii + 1] = UINT32_MAX; // Mark second element for removal
+				code_points[ii] = maxTokenNumber; 
+				code_points[ii + 1] = std::numeric_limits<std::uint32_t>::max(); 
 
 				ii += 2; // Jump by 2 to completely skip this pair
 			}
@@ -97,11 +119,8 @@ public:
 		}
 
 		code_points.erase(
-			std::remove(code_points.begin(), code_points.end(), UINT32_MAX),
+			std::remove(code_points.begin(), code_points.end(), std::numeric_limits<std::uint32_t>::max()),
 			code_points.end()
 		);
 	}
-
-
-
 };

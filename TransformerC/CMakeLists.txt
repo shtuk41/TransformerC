@@ -24,6 +24,23 @@ set(MY_HEADERS
 
 source_group("Header Files" FILES ${MY_HEADERS})
 
+include(FetchContent)
+FetchContent_Declare(
+  utf8cpp
+  GIT_REPOSITORY https://github.com/nemtrif/utfcpp
+  GIT_TAG        v4.0.5
+)
+FetchContent_MakeAvailable(utf8cpp)
+
+# Explicitly create the target if utf8cpp's internal CMake doesn't expose it
+if(NOT TARGET utf8cpp::utf8cpp)
+  add_library(utf8cpp::utf8cpp INTERFACE IMPORTED)
+  set_target_properties(utf8cpp::utf8cpp PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${utf8cpp_SOURCE_DIR}/source"
+  )
+endif()
+
+
 add_executable(TransformerC 
 	${MY_SOURCES} 
 )
@@ -43,6 +60,7 @@ target_link_libraries(TransformerC PRIVATE
 	CUDA::cudart
 	CUDA::cublas
 	CUDA::cufft
+	utf8cpp::utf8cpp
 )
 
 target_compile_features(TransformerC PRIVATE cxx_std_20)
