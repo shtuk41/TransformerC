@@ -105,7 +105,7 @@ public:
 		
 	}
 
-	torch::Tensor generate(torch::Tensor idx, int max_new_tokens)
+	torch::Tensor generate(torch::Tensor idx, int max_new_tokens, double temperature = 0.7)
 	{
 		for (int ii = 0; ii < max_new_tokens; ii++)
 		{
@@ -115,6 +115,12 @@ public:
 			auto idx_cond = idx.slice(1, start, seq_len);
 			auto [logits, loss] = forward(idx_cond);
 			auto last_logits = logits.index({ Slice(), -1});
+			
+			if (temperature > 0)
+			{
+				last_logits = last_logits / temperature;
+			}
+			
 			auto probs = torch::nn::functional::softmax(last_logits, -1);
 			auto idx_next = torch::multinomial(probs, 1);
 

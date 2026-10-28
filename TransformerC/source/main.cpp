@@ -15,17 +15,18 @@
 struct configuration
 {
 	int number_heads = 6;
-	int head_size = 8;
-	int batch_size = 32;
-	int block_size = 64;
-	int n_embd = 48;
+	int head_size = 16;
+	int batch_size = 64;
+	int block_size = 128;
+	int n_embd = 96;
 	int max_new_tokens = 1000;	
 	double train_percent = 0.9; 
-	int train_steps = 20000;
-	float learning_rate = 3e-4;
-	int train_loss_print_every_num_iter  = 1000;
+	int train_steps = 15000;
+	float learning_rate = 1e-3;
+	int train_loss_print_every_num_iter  = 250;
 	int estimate_loss_iterations = 200;
-	double dropout = 0.3;
+	double dropout = 0.2;
+	int total_tokens = 256;
 	
 } configuration_params;
 
@@ -84,7 +85,8 @@ void dev9(configuration& params)
 			
 			if (max_token_num %50 == 0)
 				std::cout << std::format("maximum token number: {}\n", max_token_num);
-		} while (max_token_num < 150);
+		} while (max_token_num < params.total_tokens);
+		
 
 		std::cout << std::format("maximum token number: {}\n", tokenizer.GetMaxTokenNumber());
 		std::cout << std::format("vector size: {}\n", tokenizer.GetVectorSize());
@@ -156,7 +158,13 @@ void dev9(configuration& params)
 
 		std::cout << "Check point 4\n";
 
-		auto optimizer = torch::optim::Adam(m.parameters(), params.learning_rate);
+		//auto optimizer = torch::optim::Adam(m.parameters(), params.learning_rate);
+		
+		torch::optim::AdamWOptions options(params.learning_rate);
+		options.weight_decay(0.1);
+		options.betas(std::make_tuple(0.9, 0.95)); // Standard GPT-2/3 beta settings
+
+		torch::optim::AdamW optimizer(m.parameters(), options);
 
 		std::cout << "Check point 5\n";
 
@@ -195,7 +203,25 @@ void dev9(configuration& params)
 			if (step % params.train_loss_print_every_num_iter == 0)
 			{
 				auto losses = estimate_loss(params.estimate_loss_iterations);
-				std::cout << "step:  " << step << ", " << "losses train: " << losses["train"] << " val: " << losses["val"] << std::endl;
+				std::cout << "\033[32m\nstep:  " << step << ", losses train: " << losses["train"] << " val: " << losses["val"] << "\033[0m" << std::endl;
+				
+				{
+					auto idx = torch::zeros({ 1, params.block_size }, torch::kLong).to(device);
+
+					idx = m.generate(idx, 100);
+
+					auto cpu_tensor = idx.to(torch::kCPU).contiguous();
+					int64_t* ptr = cpu_tensor.data_ptr<int64_t>();
+					std::vector<int64_t> vec(ptr, ptr + cpu_tensor.numel());
+
+					std::vector<uint32_t> codePoints32(vec.begin(), vec.end());
+
+					auto output = tokenizer.Decode(codePoints32);
+
+					std::cout << output;
+
+					std::cout << std::endl;
+				}
 			}
 
 			auto [xb, yb] = get_batch("train");
