@@ -43,7 +43,7 @@ project(TransformerC VERSION 0.1 LANGUAGES CXX)
 if(WIN32)
 	set(Torch_DIR "D:/Files/MakemoreC/ThirdParty/libtorch-win-shared-with-deps-2.13.0+cu132/libtorch/share/cmake/Torch")
 elseif(LINUX)
-	set(Torch_DIR "~/Files/TransformerC/ThirdParty/libtorch-shared-with-deps-2.13.0+cu132/libtorch/share/cmake/Torch")
+	set(Torch_DIR "~/Files/MakemoreC/ThirdParty/libtorch-shared-with-deps-2.13.0+cu132/libtorch/share/cmake/Torch")
 endif()
 
 
