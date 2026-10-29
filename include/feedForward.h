@@ -10,12 +10,12 @@ private:
 
 public:
 	FeedForward(int64_t n_embd, double dropout) :
-		net(register_module("net", torch::nn::Sequential(
-			torch::nn::Linear(torch::nn::LinearOptions(n_embd, 4 * n_embd)),
-			torch::nn::ReLU(),
-			torch::nn::Linear(torch::nn::LinearOptions(4 * n_embd, n_embd)),
-			torch::nn::Dropout(torch::nn::DropoutOptions(dropout)))))
+		net(register_module("net", torch::nn::Sequential()))
 	{
+		net->push_back(register_module("fc1", torch::nn::Linear(torch::nn::LinearOptions(n_embd, 4 * n_embd))));
+        net->push_back(register_module("relu", torch::nn::ReLU()));
+        net->push_back(register_module("fc2", torch::nn::Linear(torch::nn::LinearOptions(4 * n_embd, n_embd))));
+        net->push_back(register_module("drop", torch::nn::Dropout(torch::nn::DropoutOptions(dropout))));
 	}
 	
 	torch::Tensor forward(torch::Tensor x, torch::Tensor targets = torch::Tensor())

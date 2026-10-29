@@ -31,15 +31,17 @@ public:
 		position_embedding_table(register_module("position_embedding_table", torch::nn::Embedding(block_size, n_embd))),
 		lm_head(register_module("lm_head", torch::nn::Linear(n_embd, vocab_size))),
 		block_size(block_size),
-		blocks(register_module("blocks", torch::nn::Sequential(
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				std::make_shared<Block>(number_heads, block_size, n_embd, dropout),
-				torch::nn::LayerNorm(torch::nn::LayerNormOptions({n_embd})))))
-	{}
+		blocks(register_module("blocks", torch::nn::Sequential()))
+	{
+		for (int64_t i = 0; i < 6; ++i)
+        {
+            blocks->push_back(register_module("block_" + std::to_string(i),
+                std::make_shared<Block>(number_heads, block_size, n_embd, dropout)));
+        }
+        
+        blocks->push_back(register_module("ln_f", 
+            torch::nn::LayerNorm(torch::nn::LayerNormOptions({n_embd}))));
+	}
 
 	std::pair<torch::Tensor, torch::Tensor> forward(torch::Tensor idx, torch::Tensor targets = torch::Tensor())
 	{
@@ -53,7 +55,7 @@ public:
 		printTensorShape(tok_emb);
 #endif		
 		
-		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::kCUDA)); //(T,C)
+		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::TensorOptions().device(idx.device()))); //(T,C)
 
 #ifdef __BI_DEBUG			
 		std::cout << "pos_emb: \n";
@@ -162,7 +164,7 @@ public:
 		printTensorShape(tok_emb);
 #endif		
 		
-		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::kCUDA)); //(T,C)
+		auto pos_emb = position_embedding_table(torch::arange(0, T, torch::TensorOptions().device(idx.device()))); //(T,C)
 
 #ifdef __BI_DEBUG			
 		std::cout << "pos_emb: \n";

@@ -59,7 +59,7 @@ public:
 		printTensorShape(q);
 #endif			
 
-		auto wei = q.matmul(k.transpose(-2, -1)) * sqrt(head_size);
+		auto wei = q.matmul(k.transpose(-2, -1)) / sqrt(head_size);
 
 #ifdef _HEAD_DEBUG			
 		std::cout << "head wei: \n";
@@ -114,16 +114,14 @@ private:
 	
 public:
 	MultiHeadAttention(int64_t num_heads, int64_t head_size, int64_t block_size, int64_t n_embd, double dropout) :
+		heads(register_module("heads", torch::nn::ModuleList())),
 		proj(register_module("proj", torch::nn::Linear(torch::nn::LinearOptions(n_embd, n_embd)))),
 		drop(register_module("dropout", torch::nn::Dropout(torch::nn::DropoutOptions(dropout))))
 	{
 		for (int64_t ii = 0; ii < num_heads; ii++)
 		{
-			auto head = register_module("head_" + std::to_string(ii), std::make_shared<Head>(head_size, block_size, n_embd, dropout));
-			heads->push_back(head);
+			heads->push_back(register_module("head_" + std::to_string(ii), std::make_shared<Head>(head_size, block_size, n_embd, dropout)));
 		}
-		
-		register_module("heads", heads);
 	}
 	
 	torch::Tensor forward(torch::Tensor x, torch::Tensor targets = torch::Tensor())

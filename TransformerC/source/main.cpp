@@ -17,16 +17,16 @@ struct configuration
 	int number_heads = 6;
 	int head_size = 16;
 	int batch_size = 64;
-	int block_size = 128;
+	int block_size = 256;
 	int n_embd = 96;
 	int max_new_tokens = 1000;	
 	double train_percent = 0.9; 
-	int train_steps = 15000;
+	int train_steps = 10000;
 	float learning_rate = 1e-3;
 	int train_loss_print_every_num_iter  = 250;
 	int estimate_loss_iterations = 200;
 	double dropout = 0.2;
-	int total_tokens = 256;
+	int total_tokens = 512;
 	
 } configuration_params;
 
