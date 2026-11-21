@@ -4,7 +4,9 @@
 #include <cstdint> 
 #include <limits>
 #include <string>
+#include <unordered_set>
 #include <vector>
+
 
 #include <utf8.h>
 
@@ -31,13 +33,13 @@ public:
 											maxTokenNumber(0),
 											code_points(code_points)
 	{
+
+		std::unordered_set<uint32_t> unum(code_points.begin(), code_points.end());
+
+		maxTokenNumber = unum.size();
+
 		for (int ii = 0; ii < code_points.size(); ii++)
 		{
-			if (code_points[ii] > maxTokenNumber)
-			{
-				maxTokenNumber = code_points[ii];
-			}
-
 			if (!vocabluary.contains(code_points[ii]))
 			{
 				auto rep = uint32ToString(code_points[ii]);
