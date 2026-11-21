@@ -1,4 +1,5 @@
 
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -26,7 +27,10 @@ struct configuration
 	int train_loss_print_every_num_iter  = 250;
 	int estimate_loss_iterations = 200;
 	double dropout = 0.2;
-	int total_tokens = 10000;
+
+	//tokens
+	bool save_tokens_to_file = true;
+	int total_tokens = 3000;
 	
 } configuration_params;
 
@@ -86,12 +90,17 @@ void dev9(configuration& params)
 			if (max_token_num %50 == 0)
 				std::cout << std::format("maximum token number: {}\n", max_token_num);
 		} while (max_token_num < params.total_tokens);
+
+		if (params.save_tokens_to_file)
+		{
+			std::filesystem::path tokens_path("tokens.txt");
+			tokenizer.SaveTokensToFile(tokens_path);
+		}
 		
 
 		std::cout << std::format("maximum token number: {}\n", tokenizer.GetMaxTokenNumber());
 		std::cout << std::format("vector size: {}\n", tokenizer.GetVectorSize());
 
-		
 		auto codePoints = tokenizer.GetCodePoints();
 		
 		

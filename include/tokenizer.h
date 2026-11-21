@@ -1,7 +1,10 @@
 #pragma once
 
 #include <algorithm> 
-#include <cstdint> 
+#include <cstdint>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <unordered_set>
@@ -124,5 +127,18 @@ public:
 			std::remove(code_points.begin(), code_points.end(), std::numeric_limits<std::uint32_t>::max()),
 			code_points.end()
 		);
+	}
+
+	void SaveTokensToFile(std::filesystem::path &file_path)
+	{
+		std::ofstream outfile(file_path.c_str(), std::ios::trunc);
+
+		if (outfile.is_open())
+		{
+			for (auto &p : vocabluary)
+			{
+				outfile << std::format("{} : {}\n", p.first, p.second);
+			}
+		}
 	}
 };
